@@ -1,0 +1,83 @@
+from langdetect import detect, DetectorFactory
+import sqlite3
+
+# Ensure consistent language detection results
+DetectorFactory.seed = 0
+
+# Supported languages in Telangana and Andhra Pradesh
+SUPPORTED_LANGUAGES = {
+    'te': 'Telugu',
+    'hi': 'Hindi',
+    'ur': 'Urdu',
+    'ta': 'Tamil',
+    'en': 'English'
+}
+
+def detect_language(text):
+    """
+    Detect the language of a given text and map it to a supported language.
+    Args:
+        text (str): Text input (e.g., festival description).
+    Returns:
+        str: Language name (e.g., 'Telugu') or 'Unknown' if not supported.
+    """
+    try:
+        if not text or not isinstance(text, str) or text.strip() == '':
+            return 'Unknown'
+        
+        # Detect language code (e.g., 'te' for Telugu)
+        lang_code = detect(text)
+        
+        # Map to supported language name
+        return SUPPORTED_LANGUAGES.get(lang_code, 'Unknown')
+    except Exception:
+        return 'Unknown'
+
+def get_supported_languages():
+    """
+    Retrieve the list of supported languages.
+    Returns:
+        list: List of language names (e.g., ['Telugu', 'Hindi', ...]).
+    """
+    return list(SUPPORTED_LANGUAGES.values())
+
+def validate_language(language):
+    """
+    Validate if a language is supported.
+    Args:
+        language (str): Language name to validate.
+    Returns:
+        bool: True if supported, False otherwise.
+    """
+    return language in SUPPORTED_LANGUAGES.values()
+
+def get_language_from_db(state=None, district=None, category=None):
+    """
+    Retrieve distinct languages from the database for given filters.
+    Args:
+        state (str): State name (e.g., 'Telangana').
+        district (str): District name (e.g., 'Hyderabad').
+        category (str): Category (e.g., 'festival', 'tourist_place', 'food_item').
+    Returns:
+        list: List of distinct language names.
+    """
+    conn = sqlite3.connect('submissions.db')
+    c = conn.cursor()
+    query = "SELECT DISTINCT language FROM submissions WHERE 1=1"
+    params = []
+    
+    if state:
+        query += " AND language = ?"
+        params.append(state)
+    if district:
+        query += " AND name = ?"
+        params.append(district)
+    if category:
+        query += " AND category = ?"
+        params.append(category)
+    
+    c.execute(query, params)
+    languages = [row[0] for row in c.fetchall()]
+    conn.close()
+    
+    return languages
